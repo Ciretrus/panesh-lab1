@@ -4,9 +4,9 @@ using System.Text.RegularExpressions;
 namespace JewelryWorkshop.Models;
 
 /// <summary>
-/// Сущность "Клиент" ювелирной мастерской с валидацией полей и перегруженными конструкторами.
+/// Сущность "Клиент" ювелирной мастерской с валидацией, перегрузками, строковым представлением и сравнением.
 /// </summary>
-public class Client
+public class Client : IEquatable<Client>
 {
     // Шаблоны регулярных выражений для проверки
     private const string NamePattern = @"^[a-zA-Zа-яА-ЯёЁ\-]+$";
@@ -50,7 +50,7 @@ public class Client
     }
 
     /// <summary>
-    /// 2. Краткий конструктор (только обязательные поля, опциональные поля равны null).
+    /// 2. Краткий конструктор (только обязательные поля).
     /// </summary>
     public Client(int id, string lastName, string firstName, string phone, string passportSeriesNumber)
         : this(id, lastName, firstName, middleName: null, phone, email: null, passportSeriesNumber, address: null)
@@ -73,9 +73,6 @@ public class Client
     {
     }
 
-    /// <summary>
-    /// Вспомогательный закрытый конструктор для распаковки кортежа данных.
-    /// </summary>
     private Client((int id, string lastName, string firstName, string? middleName, string phone, string? email, string passport, string? address) data)
         : this(data.id, data.lastName, data.firstName, data.middleName, data.phone, data.email, data.passport, data.address)
     {
@@ -170,6 +167,85 @@ public class Client
         }
     }
 
+    // --- Представление объекта (полная и краткая версия) ---
+
+    /// <summary>
+    /// Фамилия и инициалы (например: "Иванов И. И." или "Иванов И.").
+    /// </summary>
+    public string GetShortName()
+    {
+        char firstInitial = char.ToUpperInvariant(FirstName[0]);
+        if (!string.IsNullOrWhiteSpace(MiddleName))
+        {
+            char middleInitial = char.ToUpperInvariant(MiddleName[0]);
+            return $"{LastName} {firstInitial}. {middleInitial}.";
+        }
+
+        return $"{LastName} {firstInitial}.";
+    }
+
+    /// <summary>
+    /// Полная версия строкового представления объекта.
+    /// </summary>
+    public string ToFullString()
+    {
+        string middle = string.IsNullOrWhiteSpace(MiddleName) ? string.Empty : $" {MiddleName}";
+        string mail = Email ?? "—";
+        string addr = Address ?? "—";
+        return $"Клиент [ID={Id}]: {LastName} {FirstName}{middle} | Тел: {Phone} | Email: {mail} | Паспорт: {PassportSeriesNumber} | Адрес: {addr}";
+    }
+
+    /// <summary>
+    /// Краткая версия строкового представления объекта.
+    /// </summary>
+    public string ToShortString()
+    {
+        return $"[ID={Id}] {GetShortName()} | Тел: {Phone}";
+    }
+
+    public override string ToString() => ToFullString();
+
+    // --- Сравнение объектов на равенство ---
+
+    public bool Equals(Client? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+
+        return Id == other.Id &&
+               string.Equals(LastName, other.LastName, StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(FirstName, other.FirstName, StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(MiddleName, other.MiddleName, StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(Phone, other.Phone, StringComparison.Ordinal) &&
+               string.Equals(Email, other.Email, StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(PassportSeriesNumber, other.PassportSeriesNumber, StringComparison.Ordinal) &&
+               string.Equals(Address, other.Address, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as Client);
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(Id);
+        hash.Add(LastName, StringComparer.OrdinalIgnoreCase);
+        hash.Add(FirstName, StringComparer.OrdinalIgnoreCase);
+        hash.Add(MiddleName, StringComparer.OrdinalIgnoreCase);
+        hash.Add(Phone, StringComparer.Ordinal);
+        hash.Add(Email, StringComparer.OrdinalIgnoreCase);
+        hash.Add(PassportSeriesNumber, StringComparer.Ordinal);
+        hash.Add(Address, StringComparer.OrdinalIgnoreCase);
+        return hash.ToHashCode();
+    }
+
+    public static bool operator ==(Client? left, Client? right)
+    {
+        if (left is null) return right is null;
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(Client? left, Client? right) => !(left == right);
+
     // --- Вспомогательные методы парсинга для нетривиальных конструкторов ---
 
     private static (int, string, string, string?, string, string?, string, string?) ParseString(string rawData)
@@ -179,14 +255,12 @@ public class Client
 
         string trimmed = rawData.Trim();
 
-        // Если передана строка в формате JSON
         if (trimmed.StartsWith("{") && trimmed.EndsWith("}"))
         {
             using var doc = JsonDocument.Parse(trimmed);
             return ParseJsonElement(doc.RootElement);
         }
 
-        // Если передана строка с разделителем ';'
         string[] parts = trimmed.Split(';');
         if (parts.Length != 8)
         {
@@ -249,7 +323,7 @@ public class Client
         return (id, lastName, firstName, middleName, phone, email, passport, address);
     }
 
-    // --- Обобщенные методы валидации (устранение дублирования кода) ---
+    // --- Обобщенные методы валидации ---
 
     private static bool ValidateRegex(string? value, string pattern, bool isRequired)
     {
@@ -276,7 +350,7 @@ public class Client
         return value.Trim().Length <= maxLength;
     }
 
-    // --- Публичные статические методы валидации (методы класса) ---
+    // --- Публичные статические методы валидации ---
 
     public static bool IsValidId(int id) => id > 0;
 

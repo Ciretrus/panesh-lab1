@@ -1,40 +1,57 @@
-using System.Text.Json;
 using JewelryWorkshop.Models;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-Console.WriteLine("=== Лабораторная работа 1: Пункт 6 (Перегрузка конструкторов) ===");
+Console.WriteLine("=== Лабораторная работа 1: Пункт 7 (Вывод и сравнение объектов) ===");
 
-// 1. Канонический конструктор
-var client1 = new Client(1, "Иванов", "Иван", "Иванович", "+79991112233", "ivan@mail.ru", "0315 111222", "ул. Ленина 1");
-Console.WriteLine($"1. Канонический конструктор: {client1.LastName} {client1.FirstName}, Паспорт: {client1.PassportSeriesNumber}");
+var client1 = new Client(
+    id: 1,
+    lastName: "Иванов",
+    firstName: "Иван",
+    middleName: "Иванович",
+    phone: "+79991112233",
+    email: "ivanov@mail.ru",
+    passportSeriesNumber: "0315 111222",
+    address: "г. Краснодар, ул. Красная, 10"
+);
 
-// 2. Краткий конструктор (только обязательные поля)
-var client2 = new Client(2, "Петров", "Петр", "+79992223344", "0316 222333");
-Console.WriteLine($"2. Краткий конструктор: {client2.LastName} {client2.FirstName}, Отчество: '{client2.MiddleName ?? "отсутствует"}', Email: '{client2.Email ?? "отсутствует"}'");
+var client2 = new Client(
+    id: 1,
+    lastName: "Иванов",
+    firstName: "Иван",
+    middleName: "Иванович",
+    phone: "+79991112233",
+    email: "ivanov@mail.ru",
+    passportSeriesNumber: "0315 111222",
+    address: "г. Краснодар, ул. Красная, 10"
+);
 
-// 3. Конструктор из форматированной строки (CSV с разделителем ';')
-string csvRow = "3;Сидоров;Алексей;Сергеевич;+79993334455;sidorov@mail.ru;0317 333444;ул. Мира 5";
-var client3 = new Client(csvRow);
-Console.WriteLine($"3. Из строки (разделитель ';'): ID={client3.Id}, {client3.LastName} {client3.FirstName}, Тел: {client3.Phone}");
+var client3 = new Client(
+    id: 2,
+    lastName: "Петров",
+    firstName: "Петр",
+    middleName: null,
+    phone: "+79998887766",
+    email: null,
+    passportSeriesNumber: "0316 333444",
+    address: null
+);
 
-// 4. Конструктор из строки JSON
-string jsonString = """
-{
-    "id": 4,
-    "lastName": "Кузнецова",
-    "firstName": "Анна",
-    "middleName": null,
-    "phone": "+79994445566",
-    "email": "kuznetsova@gmail.com",
-    "passportSeriesNumber": "0318 444555",
-    "address": "ул. Гагарина 12"
-}
-""";
-var client4 = new Client(jsonString);
-Console.WriteLine($"4. Из JSON-строки: ID={client4.Id}, {client4.LastName} {client4.FirstName}, Email: {client4.Email}");
+Console.WriteLine("\n--- 1. Вывод полной версии объекта (ToFullString / ToString) ---");
+Console.WriteLine(client1.ToFullString());
+Console.WriteLine(client3.ToFullString());
 
-// 5. Конструктор из JsonElement
-using var doc = JsonDocument.Parse(jsonString);
-var client5 = new Client(doc.RootElement);
-Console.WriteLine($"5. Из JsonElement: ID={client5.Id}, {client5.LastName} {client5.FirstName}, Тел: {client5.Phone}");
+Console.WriteLine("\n--- 2. Вывод краткой версии объекта (ToShortString) ---");
+Console.WriteLine(client1.ToShortString());
+Console.WriteLine(client3.ToShortString());
+
+Console.WriteLine("\n--- 3. Сравнение объектов на равенство ---");
+Console.WriteLine($"client1 и client2 (одинаковые данные в разных объектах):");
+Console.WriteLine($"  client1.Equals(client2): {client1.Equals(client2)}");
+Console.WriteLine($"  client1 == client2:      {client1 == client2}");
+Console.WriteLine($"  Хэш-коды равны:          {client1.GetHashCode() == client2.GetHashCode()}");
+
+Console.WriteLine($"\nclient1 и client3 (разные данные):");
+Console.WriteLine($"  client1.Equals(client3): {client1.Equals(client3)}");
+Console.WriteLine($"  client1 == client3:      {client1 == client3}");
+Console.WriteLine($"  client1 != client3:      {client1 != client3}");
