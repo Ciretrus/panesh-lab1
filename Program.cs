@@ -2,33 +2,44 @@ using JewelryWorkshop.Models;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-Console.WriteLine("=== Лабораторная работа 1: Пункт 8 (Класс с краткой версией данных ClientShort) ===");
+Console.WriteLine("=== Лабораторная работа 1: Пункт 9 (Иерархия наследования ClientBase -> Client / ClientShort) ===\n");
 
-// 1. Исходный полный объект Client
-var fullClient = new Client(
-    id: 10,
-    lastName: "Васильев",
-    firstName: "Василий",
-    middleName: "Васильевич",
-    phone: "+79181112233",
-    email: "vasiliev@mail.ru",
-    passportSeriesNumber: "0310 998877",
-    address: "г. Сочи, Курортный проспект, 5"
+// 1. Создание объектов наследников
+Client fullClient = new Client(
+    id: 1,
+    lastName: "Иванов",
+    firstName: "Иван",
+    middleName: "Иванович",
+    phone: "+79991112233",
+    email: "ivanov@mail.ru",
+    passportSeriesNumber: "0315 111222",
+    address: "г. Краснодар, ул. Красная, 10"
 );
-Console.WriteLine($"Полный клиент:\n  {fullClient.ToFullString()}");
 
-// 2. Создание ClientShort на основе полного Client
-var shortFromFull = new ClientShort(fullClient);
-Console.WriteLine($"\nClientShort, созданный из полного Client:\n  {shortFromFull}");
+ClientShort shortClient = new ClientShort(
+    id: 2,
+    shortName: "Петров П. С.",
+    phone: "+79992223344",
+    passportSeriesNumber: "0316 222333"
+);
 
-// 3. Создание ClientShort через конструктор с параметрами
-var shortExplicit = new ClientShort(11, "Николаев Н. Н.", "+79182223344", "0311 887766");
-Console.WriteLine($"\nClientShort, созданный напрямую:\n  {shortExplicit}");
+ClientShort shortFromFull = new ClientShort(fullClient);
 
-// 4. Создание ClientShort из строки
-var shortFromString = new ClientShort("12;Романов Р. Р.;+79183334455;0312 776655");
-Console.WriteLine($"\nClientShort, созданный из строки:\n  {shortFromString}");
+// 2. Демонстрация полиморфизма через базовый класс ClientBase
+List<ClientBase> allClients = new List<ClientBase> { fullClient, shortClient, shortFromFull };
 
-// 5. Проверка равенства
-var shortCopy = new ClientShort(10, "Васильев В. В.", "+79181112233", "0310 998877");
-Console.WriteLine($"\nСравнение shortFromFull и shortCopy: {shortFromFull == shortCopy}");
+Console.WriteLine("Полиморфный вывод объектов через базовый тип ClientBase (метод ToShortString()):");
+foreach (ClientBase c in allClients)
+{
+    Console.WriteLine($"  - Тип: {c.GetType().Name,-12} | Вывод: {c.ToShortString()}");
+}
+
+// 3. Проверка работы базовой валидации в обоих классах
+Console.WriteLine("\nПроверка единой статической валидации базового класса ClientBase:");
+Console.WriteLine($"  ClientBase.IsValidPhone('+79991112233'): {ClientBase.IsValidPhone("+79991112233")}");
+Console.WriteLine($"  ClientBase.IsValidPhone('не_телефон'):    {ClientBase.IsValidPhone("не_телефон")}");
+Console.WriteLine($"  ClientBase.IsValidPassportSeriesNumber('0315 111222'): {ClientBase.IsValidPassportSeriesNumber("0315 111222")}");
+
+// 4. Проверка полнофункционального вывода полной сущности
+Console.WriteLine("\nПолная информация о клиенте (метод ToFullString()):");
+Console.WriteLine($"  {fullClient.ToFullString()}");

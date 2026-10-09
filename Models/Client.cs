@@ -4,30 +4,25 @@ using System.Text.RegularExpressions;
 namespace JewelryWorkshop.Models;
 
 /// <summary>
-/// Сущность "Клиент" ювелирной мастерской с валидацией, перегрузками, строковым представлением и сравнением.
+/// Полная сущность "Клиент" ювелирной мастерской.
+/// Наследует базовый класс ClientBase, устраняя дублирование общих полей и логики.
 /// </summary>
-public class Client : IEquatable<Client>
+public class Client : ClientBase, IEquatable<Client>
 {
-    // Шаблоны регулярных выражений для проверки
     private const string NamePattern = @"^[a-zA-Zа-яА-ЯёЁ\-]+$";
-    private const string PhonePattern = @"^\+?[0-9]{10,15}$";
     private const string EmailPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
-    private const string PassportPattern = @"^\d{4}\s?\d{6}$";
 
-    // Закрытые поля (инкапсуляция)
-    private int _id;
+    // Закрытые поля, специфичные для полной сущности
     private string _lastName = string.Empty;
     private string _firstName = string.Empty;
     private string? _middleName;
-    private string _phone = string.Empty;
     private string? _email;
-    private string _passportSeriesNumber = string.Empty;
     private string? _address;
 
     // --- Конструкторы ---
 
     /// <summary>
-    /// 1. Основной канонический конструктор со всеми полями.
+    /// 1. Основной канонический конструктор.
     /// </summary>
     public Client(
         int id,
@@ -38,14 +33,12 @@ public class Client : IEquatable<Client>
         string? email,
         string passportSeriesNumber,
         string? address)
+        : base(id, phone, passportSeriesNumber)
     {
-        Id = id;
         LastName = lastName;
         FirstName = firstName;
         MiddleName = middleName;
-        Phone = phone;
         Email = email;
-        PassportSeriesNumber = passportSeriesNumber;
         Address = address;
     }
 
@@ -78,17 +71,7 @@ public class Client : IEquatable<Client>
     {
     }
 
-    // Свойства с валидацией
-    public int Id
-    {
-        get => _id;
-        set
-        {
-            if (!IsValidId(value))
-                throw new ArgumentException("ID клиента должен быть положительным числом.", nameof(value));
-            _id = value;
-        }
-    }
+    // --- Свойства специфичных полей ---
 
     public string LastName
     {
@@ -123,17 +106,6 @@ public class Client : IEquatable<Client>
         }
     }
 
-    public string Phone
-    {
-        get => _phone;
-        set
-        {
-            if (!IsValidPhone(value))
-                throw new ArgumentException("Номер телефона имеет неверный формат (ожидается от 10 до 15 цифр, опционально '+').", nameof(value));
-            _phone = value.Trim();
-        }
-    }
-
     public string? Email
     {
         get => _email;
@@ -142,17 +114,6 @@ public class Client : IEquatable<Client>
             if (!IsValidEmail(value))
                 throw new ArgumentException("Email имеет неверный формат.", nameof(value));
             _email = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-        }
-    }
-
-    public string PassportSeriesNumber
-    {
-        get => _passportSeriesNumber;
-        set
-        {
-            if (!IsValidPassportSeriesNumber(value))
-                throw new ArgumentException("Паспортные данные должны содержать 10 цифр (серия и номер).", nameof(value));
-            _passportSeriesNumber = value.Trim();
         }
     }
 
@@ -167,12 +128,12 @@ public class Client : IEquatable<Client>
         }
     }
 
-    // --- Представление объекта (полная и краткая версия) ---
+    // --- Переопределения методов базового класса ---
 
     /// <summary>
-    /// Фамилия и инициалы (например: "Иванов И. И." или "Иванов И.").
+    /// Формирование краткого имени (Фамилия И. О. или Фамилия И.)
     /// </summary>
-    public string GetShortName()
+    public override string GetShortName()
     {
         char firstInitial = char.ToUpperInvariant(FirstName[0]);
         if (!string.IsNullOrWhiteSpace(MiddleName))
@@ -193,14 +154,6 @@ public class Client : IEquatable<Client>
         string mail = Email ?? "—";
         string addr = Address ?? "—";
         return $"Клиент [ID={Id}]: {LastName} {FirstName}{middle} | Тел: {Phone} | Email: {mail} | Паспорт: {PassportSeriesNumber} | Адрес: {addr}";
-    }
-
-    /// <summary>
-    /// Краткая версия строкового представления объекта.
-    /// </summary>
-    public string ToShortString()
-    {
-        return $"[ID={Id}] {GetShortName()} | Тел: {Phone}";
     }
 
     public override string ToString() => ToFullString();
@@ -246,7 +199,7 @@ public class Client : IEquatable<Client>
 
     public static bool operator !=(Client? left, Client? right) => !(left == right);
 
-    // --- Вспомогательные методы парсинга для нетривиальных конструкторов ---
+    // --- Вспомогательные методы парсинга ---
 
     private static (int, string, string, string?, string, string?, string, string?) ParseString(string rawData)
     {
@@ -323,15 +276,7 @@ public class Client : IEquatable<Client>
         return (id, lastName, firstName, middleName, phone, email, passport, address);
     }
 
-    // --- Обобщенные методы валидации ---
-
-    private static bool ValidateRegex(string? value, string pattern, bool isRequired)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return !isRequired;
-
-        return Regex.IsMatch(value.Trim(), pattern);
-    }
+    // --- Валидация специфичных для полной сущности полей ---
 
     private static bool ValidateNamePart(string? value, bool isRequired, int maxLength = 60)
     {
@@ -342,18 +287,6 @@ public class Client : IEquatable<Client>
         return trimmed.Length <= maxLength && Regex.IsMatch(trimmed, NamePattern);
     }
 
-    private static bool ValidateLength(string? value, int maxLength, bool isRequired)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return !isRequired;
-
-        return value.Trim().Length <= maxLength;
-    }
-
-    // --- Публичные статические методы валидации ---
-
-    public static bool IsValidId(int id) => id > 0;
-
     public static bool IsValidLastName(string? lastName) =>
         ValidateNamePart(lastName, isRequired: true);
 
@@ -363,14 +296,8 @@ public class Client : IEquatable<Client>
     public static bool IsValidMiddleName(string? middleName) =>
         ValidateNamePart(middleName, isRequired: false);
 
-    public static bool IsValidPhone(string? phone) =>
-        ValidateRegex(phone, PhonePattern, isRequired: true);
-
     public static bool IsValidEmail(string? email) =>
         ValidateRegex(email, EmailPattern, isRequired: false);
-
-    public static bool IsValidPassportSeriesNumber(string? passport) =>
-        ValidateRegex(passport, PassportPattern, isRequired: true);
 
     public static bool IsValidAddress(string? address) =>
         ValidateLength(address, maxLength: 255, isRequired: false);

@@ -4,35 +4,23 @@ namespace JewelryWorkshop.Models;
 
 /// <summary>
 /// Краткая версия данных клиента: ID, Фамилия Инициалы, контактный телефон и номер документа.
+/// Наследует общий базовый класс ClientBase, устраняя дублирование кода.
 /// </summary>
-public class ClientShort : IEquatable<ClientShort>
+public class ClientShort : ClientBase, IEquatable<ClientShort>
 {
-    private const string PhonePattern = @"^\+?[0-9]{10,15}$";
-    private const string PassportPattern = @"^\d{4}\s?\d{6}$";
     private const string ShortNamePattern = @"^[a-zA-Zа-яА-ЯёЁ\-]+\s+[a-zA-Zа-яА-ЯёЁ]\.(?:\s*[a-zA-Zа-яА-ЯёЁ]\.)?$";
 
-    // Закрытые поля
-    private int _id;
+    // Закрытое поле, специфичное только для краткой версии
     private string _shortName = string.Empty;
-    private string _phone = string.Empty;
-    private string _passportSeriesNumber = string.Empty;
 
     // --- Конструкторы ---
 
-    /// <summary>
-    /// Конструктор со всеми параметрами краткой сущности.
-    /// </summary>
     public ClientShort(int id, string shortName, string phone, string passportSeriesNumber)
+        : base(id, phone, passportSeriesNumber)
     {
-        Id = id;
         ShortName = shortName;
-        Phone = phone;
-        PassportSeriesNumber = passportSeriesNumber;
     }
 
-    /// <summary>
-    /// Конструктор, создающий краткую версию на основе полного объекта Client.
-    /// </summary>
     public ClientShort(Client client)
         : this(
             client == null ? throw new ArgumentNullException(nameof(client)) : client.Id,
@@ -42,9 +30,6 @@ public class ClientShort : IEquatable<ClientShort>
     {
     }
 
-    /// <summary>
-    /// Конструктор из строки с разделителем ';' (формат: "id;Фамилия И. О.;телефон;паспорт").
-    /// </summary>
     public ClientShort(string rawData)
         : this(ParseString(rawData))
     {
@@ -55,18 +40,7 @@ public class ClientShort : IEquatable<ClientShort>
     {
     }
 
-    // --- Свойства с валидацией ---
-
-    public int Id
-    {
-        get => _id;
-        set
-        {
-            if (!IsValidId(value))
-                throw new ArgumentException("ID клиента должен быть положительным числом.", nameof(value));
-            _id = value;
-        }
-    }
+    // --- Свойства ---
 
     public string ShortName
     {
@@ -79,34 +53,9 @@ public class ClientShort : IEquatable<ClientShort>
         }
     }
 
-    public string Phone
-    {
-        get => _phone;
-        set
-        {
-            if (!IsValidPhone(value))
-                throw new ArgumentException("Номер телефона имеет неверный формат.", nameof(value));
-            _phone = value.Trim();
-        }
-    }
+    // --- Переопределение методов базового класса ---
 
-    public string PassportSeriesNumber
-    {
-        get => _passportSeriesNumber;
-        set
-        {
-            if (!IsValidPassportSeriesNumber(value))
-                throw new ArgumentException("Паспортные данные должны содержать 10 цифр (серия и номер).", nameof(value));
-            _passportSeriesNumber = value.Trim();
-        }
-    }
-
-    // --- Методы строкового представления ---
-
-    public override string ToString()
-    {
-        return $"Краткий клиент [ID={Id}]: {ShortName} | Тел: {Phone} | Паспорт: {PassportSeriesNumber}";
-    }
+    public override string GetShortName() => ShortName;
 
     // --- Сравнение на равенство ---
 
@@ -136,7 +85,7 @@ public class ClientShort : IEquatable<ClientShort>
 
     public static bool operator !=(ClientShort? left, ClientShort? right) => !(left == right);
 
-    // --- Статические методы парсинга и валидации ---
+    // --- Парсинг и валидация специфичных полей ---
 
     private static (int, string, string, string) ParseString(string rawData)
     {
@@ -153,26 +102,10 @@ public class ClientShort : IEquatable<ClientShort>
         return (id, parts[1].Trim(), parts[2].Trim(), parts[3].Trim());
     }
 
-    public static bool IsValidId(int id) => id > 0;
-
     public static bool IsValidShortName(string? shortName)
     {
         if (string.IsNullOrWhiteSpace(shortName))
             return false;
         return Regex.IsMatch(shortName.Trim(), ShortNamePattern);
-    }
-
-    public static bool IsValidPhone(string? phone)
-    {
-        if (string.IsNullOrWhiteSpace(phone))
-            return false;
-        return Regex.IsMatch(phone.Trim(), PhonePattern);
-    }
-
-    public static bool IsValidPassportSeriesNumber(string? passport)
-    {
-        if (string.IsNullOrWhiteSpace(passport))
-            return false;
-        return Regex.IsMatch(passport.Trim(), PassportPattern);
     }
 }
