@@ -1,9 +1,10 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace JewelryWorkshop.Models;
 
 /// <summary>
-/// Сущность "Клиент" ювелирной мастерской с валидацией полей без дублирования кода.
+/// Сущность "Клиент" ювелирной мастерской с валидацией полей и перегруженными конструкторами.
 /// </summary>
 public class Client
 {
@@ -23,9 +24,10 @@ public class Client
     private string _passportSeriesNumber = string.Empty;
     private string? _address;
 
+    // --- Конструкторы ---
+
     /// <summary>
-    /// Конструктор со всеми параметрами.
-    /// Инициализация через свойства гарантирует валидацию всех полей.
+    /// 1. Основной канонический конструктор со всеми полями.
     /// </summary>
     public Client(
         int id,
@@ -45,6 +47,38 @@ public class Client
         Email = email;
         PassportSeriesNumber = passportSeriesNumber;
         Address = address;
+    }
+
+    /// <summary>
+    /// 2. Краткий конструктор (только обязательные поля, опциональные поля равны null).
+    /// </summary>
+    public Client(int id, string lastName, string firstName, string phone, string passportSeriesNumber)
+        : this(id, lastName, firstName, middleName: null, phone, email: null, passportSeriesNumber, address: null)
+    {
+    }
+
+    /// <summary>
+    /// 3. Перегруженный конструктор из форматированной строки (CSV/разделитель ';' или JSON-строка).
+    /// </summary>
+    public Client(string rawData)
+        : this(ParseString(rawData))
+    {
+    }
+
+    /// <summary>
+    /// 4. Перегруженный конструктор из объекта JsonElement.
+    /// </summary>
+    public Client(JsonElement jsonElement)
+        : this(ParseJsonElement(jsonElement))
+    {
+    }
+
+    /// <summary>
+    /// Вспомогательный закрытый конструктор для распаковки кортежа данных.
+    /// </summary>
+    private Client((int id, string lastName, string firstName, string? middleName, string phone, string? email, string passport, string? address) data)
+        : this(data.id, data.lastName, data.firstName, data.middleName, data.phone, data.email, data.passport, data.address)
+    {
     }
 
     // Свойства с валидацией
@@ -136,11 +170,87 @@ public class Client
         }
     }
 
+    // --- Вспомогательные методы парсинга для нетривиальных конструкторов ---
+
+    private static (int, string, string, string?, string, string?, string, string?) ParseString(string rawData)
+    {
+        if (string.IsNullOrWhiteSpace(rawData))
+            throw new ArgumentException("Входная строка не может быть пустой.", nameof(rawData));
+
+        string trimmed = rawData.Trim();
+
+        // Если передана строка в формате JSON
+        if (trimmed.StartsWith("{") && trimmed.EndsWith("}"))
+        {
+            using var doc = JsonDocument.Parse(trimmed);
+            return ParseJsonElement(doc.RootElement);
+        }
+
+        // Если передана строка с разделителем ';'
+        string[] parts = trimmed.Split(';');
+        if (parts.Length != 8)
+        {
+            throw new ArgumentException(
+                "Строка должна содержать 8 полей, разделенных точкой с запятой: id;фамилия;имя;отчество;телефон;email;паспорт;адрес",
+                nameof(rawData));
+        }
+
+        if (!int.TryParse(parts[0].Trim(), out int id))
+            throw new ArgumentException("Первое поле (ID) должно быть целым числом.", nameof(rawData));
+
+        string lastName = parts[1].Trim();
+        string firstName = parts[2].Trim();
+        string? middleName = string.IsNullOrWhiteSpace(parts[3]) ? null : parts[3].Trim();
+        string phone = parts[4].Trim();
+        string? email = string.IsNullOrWhiteSpace(parts[5]) ? null : parts[5].Trim();
+        string passport = parts[6].Trim();
+        string? address = string.IsNullOrWhiteSpace(parts[7]) ? null : parts[7].Trim();
+
+        return (id, lastName, firstName, middleName, phone, email, passport, address);
+    }
+
+    private static (int, string, string, string?, string, string?, string, string?) ParseJsonElement(JsonElement element)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+            throw new ArgumentException("JSON должен представлять объект.", nameof(element));
+
+        int id = element.TryGetProperty("id", out var idProp) && idProp.TryGetInt32(out int parsedId)
+            ? parsedId
+            : throw new ArgumentException("JSON должен содержать числовое поле 'id'.");
+
+        string lastName = element.TryGetProperty("lastName", out var lnProp) && lnProp.GetString() is string ln
+            ? ln
+            : throw new ArgumentException("JSON должен содержать строковое поле 'lastName'.");
+
+        string firstName = element.TryGetProperty("firstName", out var fnProp) && fnProp.GetString() is string fn
+            ? fn
+            : throw new ArgumentException("JSON должен содержать строковое поле 'firstName'.");
+
+        string? middleName = element.TryGetProperty("middleName", out var mnProp) && mnProp.ValueKind != JsonValueKind.Null
+            ? mnProp.GetString()
+            : null;
+
+        string phone = element.TryGetProperty("phone", out var phProp) && phProp.GetString() is string ph
+            ? ph
+            : throw new ArgumentException("JSON должен содержать строковое поле 'phone'.");
+
+        string? email = element.TryGetProperty("email", out var emProp) && emProp.ValueKind != JsonValueKind.Null
+            ? emProp.GetString()
+            : null;
+
+        string passport = element.TryGetProperty("passportSeriesNumber", out var psProp) && psProp.GetString() is string ps
+            ? ps
+            : throw new ArgumentException("JSON должен содержать строковое поле 'passportSeriesNumber'.");
+
+        string? address = element.TryGetProperty("address", out var adProp) && adProp.ValueKind != JsonValueKind.Null
+            ? adProp.GetString()
+            : null;
+
+        return (id, lastName, firstName, middleName, phone, email, passport, address);
+    }
+
     // --- Обобщенные методы валидации (устранение дублирования кода) ---
 
-    /// <summary>
-    /// Проверка соответствия строки регулярному выражению с учётом обязательности.
-    /// </summary>
     private static bool ValidateRegex(string? value, string pattern, bool isRequired)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -149,9 +259,6 @@ public class Client
         return Regex.IsMatch(value.Trim(), pattern);
     }
 
-    /// <summary>
-    /// Проверка части ФИО (длина и допустимые символы) с учётом обязательности.
-    /// </summary>
     private static bool ValidateNamePart(string? value, bool isRequired, int maxLength = 60)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -161,9 +268,6 @@ public class Client
         return trimmed.Length <= maxLength && Regex.IsMatch(trimmed, NamePattern);
     }
 
-    /// <summary>
-    /// Проверка ограничения по максимальной длине строки.
-    /// </summary>
     private static bool ValidateLength(string? value, int maxLength, bool isRequired)
     {
         if (string.IsNullOrWhiteSpace(value))

@@ -1,37 +1,40 @@
+using System.Text.Json;
 using JewelryWorkshop.Models;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-Console.WriteLine("=== Лабораторная работа 1: Пункт 5 (Устранение дублирования кода валидации) ===");
+Console.WriteLine("=== Лабораторная работа 1: Пункт 6 (Перегрузка конструкторов) ===");
 
-// 1. Проверка работы рефакторинговой валидации на валидных данных
-Client client = new Client(
-    id: 1,
-    lastName: "Смирнов",
-    firstName: "Алексей",
-    middleName: "Викторович",
-    phone: "+79001234567",
-    email: "smirnov@mail.ru",
-    passportSeriesNumber: "0314 987654",
-    address: "г. Москва, ул. Арбат, 15"
-);
-Console.WriteLine($"[УСПЕХ] Клиент успешно создан: {client.LastName} {client.FirstName} {client.MiddleName}");
+// 1. Канонический конструктор
+var client1 = new Client(1, "Иванов", "Иван", "Иванович", "+79991112233", "ivan@mail.ru", "0315 111222", "ул. Ленина 1");
+Console.WriteLine($"1. Канонический конструктор: {client1.LastName} {client1.FirstName}, Паспорт: {client1.PassportSeriesNumber}");
 
-// 2. Проверка граничных условий через статические методы класса
-Console.WriteLine("\nТестирование статических методов валидации после устранения дублирования:");
-Console.WriteLine($"IsValidLastName('Иванов'): {Client.IsValidLastName("Иванов")}");
-Console.WriteLine($"IsValidLastName(''): {Client.IsValidLastName("")}");
-Console.WriteLine($"IsValidLastName('Иванов123'): {Client.IsValidLastName("Иванов123")}");
+// 2. Краткий конструктор (только обязательные поля)
+var client2 = new Client(2, "Петров", "Петр", "+79992223344", "0316 222333");
+Console.WriteLine($"2. Краткий конструктор: {client2.LastName} {client2.FirstName}, Отчество: '{client2.MiddleName ?? "отсутствует"}', Email: '{client2.Email ?? "отсутствует"}'");
 
-Console.WriteLine($"IsValidMiddleName(null) (опционально): {Client.IsValidMiddleName(null)}");
-Console.WriteLine($"IsValidMiddleName('Иванович'): {Client.IsValidMiddleName("Иванович")}");
+// 3. Конструктор из форматированной строки (CSV с разделителем ';')
+string csvRow = "3;Сидоров;Алексей;Сергеевич;+79993334455;sidorov@mail.ru;0317 333444;ул. Мира 5";
+var client3 = new Client(csvRow);
+Console.WriteLine($"3. Из строки (разделитель ';'): ID={client3.Id}, {client3.LastName} {client3.FirstName}, Тел: {client3.Phone}");
 
-Console.WriteLine($"IsValidPhone('+79991234567'): {Client.IsValidPhone("+79991234567")}");
-Console.WriteLine($"IsValidPhone('invalid'): {Client.IsValidPhone("invalid")}");
+// 4. Конструктор из строки JSON
+string jsonString = """
+{
+    "id": 4,
+    "lastName": "Кузнецова",
+    "firstName": "Анна",
+    "middleName": null,
+    "phone": "+79994445566",
+    "email": "kuznetsova@gmail.com",
+    "passportSeriesNumber": "0318 444555",
+    "address": "ул. Гагарина 12"
+}
+""";
+var client4 = new Client(jsonString);
+Console.WriteLine($"4. Из JSON-строки: ID={client4.Id}, {client4.LastName} {client4.FirstName}, Email: {client4.Email}");
 
-Console.WriteLine($"IsValidEmail(null) (опционально): {Client.IsValidEmail(null)}");
-Console.WriteLine($"IsValidEmail('client@test.com'): {Client.IsValidEmail("client@test.com")}");
-Console.WriteLine($"IsValidEmail('bad_email'): {Client.IsValidEmail("bad_email")}");
-
-Console.WriteLine($"IsValidPassportSeriesNumber('1234 567890'): {Client.IsValidPassportSeriesNumber("1234 567890")}");
-Console.WriteLine($"IsValidPassportSeriesNumber('123'): {Client.IsValidPassportSeriesNumber("123")}");
+// 5. Конструктор из JsonElement
+using var doc = JsonDocument.Parse(jsonString);
+var client5 = new Client(doc.RootElement);
+Console.WriteLine($"5. Из JsonElement: ID={client5.Id}, {client5.LastName} {client5.FirstName}, Тел: {client5.Phone}");
