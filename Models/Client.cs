@@ -3,11 +3,16 @@ using System.Text.RegularExpressions;
 namespace JewelryWorkshop.Models;
 
 /// <summary>
-/// Сущность "Клиент" ювелирной мастерской с валидацией полей.
-/// Существование объекта с некорректными данными невозможно.
+/// Сущность "Клиент" ювелирной мастерской с валидацией полей без дублирования кода.
 /// </summary>
 public class Client
 {
+    // Шаблоны регулярных выражений для проверки
+    private const string NamePattern = @"^[a-zA-Zа-яА-ЯёЁ\-]+$";
+    private const string PhonePattern = @"^\+?[0-9]{10,15}$";
+    private const string EmailPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+    private const string PassportPattern = @"^\d{4}\s?\d{6}$";
+
     // Закрытые поля (инкапсуляция)
     private int _id;
     private string _lastName = string.Empty;
@@ -20,7 +25,7 @@ public class Client
 
     /// <summary>
     /// Конструктор со всеми параметрами.
-    /// Инициализация через свойства гарантирует валидацию.
+    /// Инициализация через свойства гарантирует валидацию всех полей.
     /// </summary>
     public Client(
         int id,
@@ -42,7 +47,7 @@ public class Client
         Address = address;
     }
 
-    // Свойства с валидацией при установке значений
+    // Свойства с валидацией
     public int Id
     {
         get => _id;
@@ -131,65 +136,64 @@ public class Client
         }
     }
 
-    // --- Статические методы валидации (методы класса) ---
+    // --- Обобщенные методы валидации (устранение дублирования кода) ---
 
-    public static bool IsValidId(int id)
+    /// <summary>
+    /// Проверка соответствия строки регулярному выражению с учётом обязательности.
+    /// </summary>
+    private static bool ValidateRegex(string? value, string pattern, bool isRequired)
     {
-        return id > 0;
+        if (string.IsNullOrWhiteSpace(value))
+            return !isRequired;
+
+        return Regex.IsMatch(value.Trim(), pattern);
     }
 
-    public static bool IsValidLastName(string? lastName)
+    /// <summary>
+    /// Проверка части ФИО (длина и допустимые символы) с учётом обязательности.
+    /// </summary>
+    private static bool ValidateNamePart(string? value, bool isRequired, int maxLength = 60)
     {
-        if (string.IsNullOrWhiteSpace(lastName))
-            return false;
-        if (lastName.Trim().Length > 60)
-            return false;
-        return Regex.IsMatch(lastName.Trim(), @"^[a-zA-Zа-яА-ЯёЁ\-]+$");
+        if (string.IsNullOrWhiteSpace(value))
+            return !isRequired;
+
+        string trimmed = value.Trim();
+        return trimmed.Length <= maxLength && Regex.IsMatch(trimmed, NamePattern);
     }
 
-    public static bool IsValidFirstName(string? firstName)
+    /// <summary>
+    /// Проверка ограничения по максимальной длине строки.
+    /// </summary>
+    private static bool ValidateLength(string? value, int maxLength, bool isRequired)
     {
-        if (string.IsNullOrWhiteSpace(firstName))
-            return false;
-        if (firstName.Trim().Length > 60)
-            return false;
-        return Regex.IsMatch(firstName.Trim(), @"^[a-zA-Zа-яА-ЯёЁ\-]+$");
+        if (string.IsNullOrWhiteSpace(value))
+            return !isRequired;
+
+        return value.Trim().Length <= maxLength;
     }
 
-    public static bool IsValidMiddleName(string? middleName)
-    {
-        if (string.IsNullOrWhiteSpace(middleName))
-            return true;
-        if (middleName.Trim().Length > 60)
-            return false;
-        return Regex.IsMatch(middleName.Trim(), @"^[a-zA-Zа-яА-ЯёЁ\-]+$");
-    }
+    // --- Публичные статические методы валидации (методы класса) ---
 
-    public static bool IsValidPhone(string? phone)
-    {
-        if (string.IsNullOrWhiteSpace(phone))
-            return false;
-        return Regex.IsMatch(phone.Trim(), @"^\+?[0-9]{10,15}$");
-    }
+    public static bool IsValidId(int id) => id > 0;
 
-    public static bool IsValidEmail(string? email)
-    {
-        if (string.IsNullOrWhiteSpace(email))
-            return true;
-        return Regex.IsMatch(email.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-    }
+    public static bool IsValidLastName(string? lastName) =>
+        ValidateNamePart(lastName, isRequired: true);
 
-    public static bool IsValidPassportSeriesNumber(string? passport)
-    {
-        if (string.IsNullOrWhiteSpace(passport))
-            return false;
-        return Regex.IsMatch(passport.Trim(), @"^\d{4}\s?\d{6}$");
-    }
+    public static bool IsValidFirstName(string? firstName) =>
+        ValidateNamePart(firstName, isRequired: true);
 
-    public static bool IsValidAddress(string? address)
-    {
-        if (string.IsNullOrWhiteSpace(address))
-            return true;
-        return address.Trim().Length <= 255;
-    }
+    public static bool IsValidMiddleName(string? middleName) =>
+        ValidateNamePart(middleName, isRequired: false);
+
+    public static bool IsValidPhone(string? phone) =>
+        ValidateRegex(phone, PhonePattern, isRequired: true);
+
+    public static bool IsValidEmail(string? email) =>
+        ValidateRegex(email, EmailPattern, isRequired: false);
+
+    public static bool IsValidPassportSeriesNumber(string? passport) =>
+        ValidateRegex(passport, PassportPattern, isRequired: true);
+
+    public static bool IsValidAddress(string? address) =>
+        ValidateLength(address, maxLength: 255, isRequired: false);
 }
