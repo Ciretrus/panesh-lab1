@@ -7,7 +7,7 @@ namespace JewelryWorkshop.Models;
 /// Полная сущность "Клиент" ювелирной мастерской.
 /// Наследует базовый класс ClientBase, устраняя дублирование общих полей и логики.
 /// </summary>
-public class Client : ClientBase, IEquatable<Client>
+public class Client : ClientBase, IEquatable<Client>, IDisposable
 {
     private const string NamePattern = @"^[a-zA-Zа-яА-ЯёЁ\-]+$";
     private const string EmailPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
@@ -18,6 +18,7 @@ public class Client : ClientBase, IEquatable<Client>
     private string? _middleName;
     private string? _email;
     private string? _address;
+    public event Action OnDestroy;
 
     // --- Конструкторы ---
 
@@ -301,4 +302,9 @@ public class Client : ClientBase, IEquatable<Client>
 
     public static bool IsValidAddress(string? address) =>
         ValidateLength(address, maxLength: 255, isRequired: false);
+
+    public void Dispose()
+    {
+        OnDestroy?.Invoke();
+    }
 }

@@ -6,7 +6,7 @@ namespace JewelryWorkshop.Models;
 /// Краткая версия данных клиента: ID, Фамилия Инициалы, контактный телефон и номер документа.
 /// Наследует общий базовый класс ClientBase, устраняя дублирование кода.
 /// </summary>
-public class ClientShort : ClientBase, IEquatable<ClientShort>
+public class ClientShort : ClientBase, IEquatable<ClientShort>, IDisposable
 {
     private const string ShortNamePattern = @"^[a-zA-Zа-яА-ЯёЁ\-]+\s+[a-zA-Zа-яА-ЯёЁ]\.(?:\s*[a-zA-Zа-яА-ЯёЁ]\.)?$";
 
@@ -28,6 +28,7 @@ public class ClientShort : ClientBase, IEquatable<ClientShort>
             client.Phone,
             client.PassportSeriesNumber)
     {
+        client.OnDestroy += Dispose;
     }
 
     public ClientShort(string rawData)
@@ -107,5 +108,10 @@ public class ClientShort : ClientBase, IEquatable<ClientShort>
         if (string.IsNullOrWhiteSpace(shortName))
             return false;
         return Regex.IsMatch(shortName.Trim(), ShortNamePattern);
+    }
+
+    public void Dispose()
+    {
+
     }
 }
