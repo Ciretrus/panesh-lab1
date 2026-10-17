@@ -1,6 +1,6 @@
 # Диаграмма классов — Лабораторная работа 2
 
-## Пункт 1: Репозиторий Client_rep_json
+## Пункт 1 и Пункт 2: Репозитории Client_rep_json и Client_rep_yaml
 
 ```mermaid
 classDiagram
@@ -72,9 +72,43 @@ classDiagram
         + GetCount() int
     }
 
+    class ClientYamlDto {
+        + Id: int
+        + LastName: string
+        + FirstName: string
+        + MiddleName: string?
+        + Phone: string
+        + Email: string?
+        + PassportSeriesNumber: string
+        + Address: string?
+    }
+
+    class Client_rep_yaml {
+        - _filePath: string
+        - _clients: List~Client~
+        - Serializer: ISerializer$
+        - Deserializer: IDeserializer$
+        + Client_rep_yaml(filePath: string)
+        + ReadFromFile() List~Client~
+        + ReadAll() List~Client~
+        + WriteToFile() void
+        + GetById(id: int) Client?
+        + get_k_n_short_list(k: int, n: int) List~ClientShort~
+        + GetKNShortList(k: int, n: int) List~ClientShort~
+        + SortByField(ascending: bool) void
+        + Add(client: Client) int
+        + ReplaceById(id: int, newClient: Client) bool
+        + DeleteById(id: int) bool
+        + get_count() int
+        + GetCount() int
+    }
+
     ClientBase <|-- Client : наследует
     ClientBase <|-- ClientShort : наследует
     ClientShort ..> Client : создает из Client
     Client_rep_json o-- Client : агрегирует коллекцию
     Client_rep_json ..> ClientShort : возвращает в get_k_n_short_list
+    Client_rep_yaml o-- Client : агрегирует коллекцию
+    Client_rep_yaml ..> ClientShort : возвращает в get_k_n_short_list
+    Client_rep_yaml ..> ClientYamlDto : использует для сериализации
 ```
