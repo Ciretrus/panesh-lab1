@@ -1,11 +1,12 @@
 # Диаграмма классов — Лабораторная работа 2
 
-## Пункт 1 и Пункт 2: Репозитории Client_rep_json и Client_rep_yaml
+## Пункт 3: Иерархия классов репозиториев (наследование)
 
 ```mermaid
 classDiagram
     direction TB
 
+    %% Сущности предметной области
     class ClientBase {
         <<abstract>>
         # PhonePattern: string
@@ -53,14 +54,17 @@ classDiagram
         + Dispose() void
     }
 
-    class Client_rep_json {
-        - _filePath: string
-        - _clients: List~Client~
-        - JsonOptions: JsonSerializerOptions$
-        + Client_rep_json(filePath: string)
-        + ReadFromFile() List~Client~
+    %% Базовый класс репозиториев
+    class Client_rep_base {
+        <<abstract>>
+        # _filePath: string
+        # _clients: List~Client~
+        # Client_rep_base(filePath: string)
+        # Initialize() void
+        # EnsureDirectoryExists() void
+        + ReadFromFile()* List~Client~
         + ReadAll() List~Client~
-        + WriteToFile() void
+        + WriteToFile()* void
         + GetById(id: int) Client?
         + get_k_n_short_list(k: int, n: int) List~ClientShort~
         + GetKNShortList(k: int, n: int) List~ClientShort~
@@ -70,6 +74,13 @@ classDiagram
         + DeleteById(id: int) bool
         + get_count() int
         + GetCount() int
+    }
+
+    class Client_rep_json {
+        - JsonOptions: JsonSerializerOptions$
+        + Client_rep_json(filePath: string)
+        + ReadFromFile() List~Client~
+        + WriteToFile() void
     }
 
     class ClientYamlDto {
@@ -84,31 +95,22 @@ classDiagram
     }
 
     class Client_rep_yaml {
-        - _filePath: string
-        - _clients: List~Client~
         - Serializer: ISerializer$
         - Deserializer: IDeserializer$
         + Client_rep_yaml(filePath: string)
         + ReadFromFile() List~Client~
-        + ReadAll() List~Client~
         + WriteToFile() void
-        + GetById(id: int) Client?
-        + get_k_n_short_list(k: int, n: int) List~ClientShort~
-        + GetKNShortList(k: int, n: int) List~ClientShort~
-        + SortByField(ascending: bool) void
-        + Add(client: Client) int
-        + ReplaceById(id: int, newClient: Client) bool
-        + DeleteById(id: int) bool
-        + get_count() int
-        + GetCount() int
     }
 
+    %% Связи
     ClientBase <|-- Client : наследует
     ClientBase <|-- ClientShort : наследует
     ClientShort ..> Client : создает из Client
-    Client_rep_json o-- Client : агрегирует коллекцию
-    Client_rep_json ..> ClientShort : возвращает в get_k_n_short_list
-    Client_rep_yaml o-- Client : агрегирует коллекцию
-    Client_rep_yaml ..> ClientShort : возвращает в get_k_n_short_list
+
+    Client_rep_base <|-- Client_rep_json : наследует
+    Client_rep_base <|-- Client_rep_yaml : наследует
+
+    Client_rep_base o-- Client : агрегирует коллекцию
+    Client_rep_base ..> ClientShort : возвращает в get_k_n_short_list
     Client_rep_yaml ..> ClientYamlDto : использует для сериализации
 ```

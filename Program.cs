@@ -188,4 +188,34 @@ foreach (var c in repYamlFinal.ReadAll())
 {
     Console.WriteLine($"   - {c.ToFullString()}");
 }
-Console.WriteLine($"\nТест Client_rep_yaml успешно завершен! Файл {testYamlPath} корректно сохранен и прочитан.");
+Console.WriteLine($"\nТест Client_rep_yaml успешно завершен! Файл {testYamlPath} корректно сохранен и прочитан.\n");
+
+Console.WriteLine("======================================================================");
+Console.WriteLine("  Лабораторная работа 2. Пункт 3: Общая иерархия Client_rep_base");
+Console.WriteLine("======================================================================\n");
+
+// Демонстрация полиморфизма: работа со списком различных репозиториев через базовый тип Client_rep_base
+List<Client_rep_base> repositories = new()
+{
+    new Client_rep_json(testJsonPath),
+    new Client_rep_yaml(testYamlPath)
+};
+
+Console.WriteLine("Полиморфный вызов методов через базовый класс Client_rep_base:");
+foreach (var repository in repositories)
+{
+    Console.WriteLine($"\n-> Репозиторий типа: {repository.GetType().Name}");
+    Console.WriteLine($"   Количество элементов (get_count): {repository.get_count()}");
+    
+    var firstTwo = repository.get_k_n_short_list(k: 1, n: 2);
+    Console.WriteLine($"   Первые 2 кратких записи (get_k_n_short_list):");
+    foreach (var item in firstTwo)
+    {
+        Console.WriteLine($"     * {item.ToShortString()}");
+    }
+
+    var byId = repository.GetById(1);
+    Console.WriteLine($"   Поиск клиента ID=1: {(byId != null ? byId.ToShortString() : "Не найден")}");
+}
+
+Console.WriteLine("\nВсе тесты пункта 3 успешно выполнены!");
