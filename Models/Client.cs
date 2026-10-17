@@ -18,7 +18,7 @@ public class Client : ClientBase, IEquatable<Client>, IDisposable
     private string? _middleName;
     private string? _email;
     private string? _address;
-    public event Action OnDestroy;
+    public event Action? OnDestroy;
 
     // --- Конструкторы ---
 
