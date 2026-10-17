@@ -1,6 +1,6 @@
 # Диаграмма классов — Лабораторная работа 2
 
-## Пункт 3: Иерархия классов репозиториев (наследование)
+## Пункт 4: Репозиторий Client_rep_DB (работа с PostgreSQL)
 
 ```mermaid
 classDiagram
@@ -54,7 +54,7 @@ classDiagram
         + Dispose() void
     }
 
-    %% Базовый класс репозиториев
+    %% Файловая иерархия репозиториев
     class Client_rep_base {
         <<abstract>>
         # _filePath: string
@@ -102,6 +102,23 @@ classDiagram
         + WriteToFile() void
     }
 
+    %% Репозиторий для работы с базой данных (Пункт 4)
+    class Client_rep_DB {
+        - _connectionString: string
+        + Client_rep_DB(connectionString: string)
+        - CreateConnection() NpgsqlConnection
+        + EnsureTableExists() void
+        + GetById(id: int) Client?
+        + get_k_n_short_list(k: int, n: int) List~ClientShort~
+        + GetKNShortList(k: int, n: int) List~ClientShort~
+        + Add(client: Client) int
+        + ReplaceById(id: int, newClient: Client) bool
+        + DeleteById(id: int) bool
+        + get_count() int
+        + GetCount() int
+        - MapRowToClient(reader: IDataReader)$ Client
+    }
+
     %% Связи
     ClientBase <|-- Client : наследует
     ClientBase <|-- ClientShort : наследует
@@ -113,4 +130,7 @@ classDiagram
     Client_rep_base o-- Client : агрегирует коллекцию
     Client_rep_base ..> ClientShort : возвращает в get_k_n_short_list
     Client_rep_yaml ..> ClientYamlDto : использует для сериализации
+
+    Client_rep_DB ..> Client : создает/читает
+    Client_rep_DB ..> ClientShort : возвращает в get_k_n_short_list
 ```

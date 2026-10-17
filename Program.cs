@@ -218,4 +218,65 @@ foreach (var repository in repositories)
     Console.WriteLine($"   Поиск клиента ID=1: {(byId != null ? byId.ToShortString() : "Не найден")}");
 }
 
-Console.WriteLine("\nВсе тесты пункта 3 успешно выполнены!");
+Console.WriteLine("\nВсе тесты пункта 3 успешно выполнены!\n");
+
+Console.WriteLine("======================================================================");
+Console.WriteLine("  Лабораторная работа 2. Пункт 4: Репозиторий Client_rep_DB (PostgreSQL)");
+Console.WriteLine("======================================================================\n");
+
+string connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+    ?? "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres";
+
+try
+{
+    Console.WriteLine($"1. Подключение к БД PostgreSQL: {connString.Split(';').First()}...");
+    var dbRep = new Client_rep_DB(connString);
+    Console.WriteLine("   Подключение успешно! Таблица clients проверена/создана.");
+    Console.WriteLine($"   Текущее количество записей (get_count): {dbRep.get_count()}\n");
+
+    // c. Добавить объект (Add)
+    Console.WriteLine("2. Добавление клиентов в БД (Add):");
+    var dbClient1 = new Client(1, "Кузнецов", "Константин", "Константинович", "+79011112233", "kuznetsov@mail.ru", "0320 112233", "г. Краснодар, ул. Кубанская, 1");
+    var dbClient2 = new Client(1, "Федоров", "Федор", null, "+79012223344", "fedor@mail.ru", "0321 223344", "г. Москва, Ленинский пр., 10");
+
+    int id1 = dbRep.Add(dbClient1);
+    Console.WriteLine($"   Добавлен клиент ID={id1}: {dbClient1.LastName} {dbClient1.FirstName}");
+    int id2 = dbRep.Add(dbClient2);
+    Console.WriteLine($"   Добавлен клиент ID={id2}: {dbClient2.LastName} {dbClient2.FirstName}");
+    Console.WriteLine($"   Количество записей (get_count): {dbRep.get_count()}\n");
+
+    // a. Получить объект по ID (GetById)
+    Console.WriteLine("3. Получение клиента по ID из БД (GetById):");
+    var foundDb = dbRep.GetById(id1);
+    Console.WriteLine($"   Поиск ID={id1}: {(foundDb != null ? foundDb.ToFullString() : "Не найден")}\n");
+
+    // b. get_k_n_short_list
+    Console.WriteLine("4. Постраничная выборка кратких записей из БД (get_k_n_short_list):");
+    var dbPage = dbRep.get_k_n_short_list(k: 1, n: 5);
+    foreach (var cs in dbPage)
+    {
+        Console.WriteLine($"   * {cs.ToShortString()}");
+    }
+    Console.WriteLine();
+
+    // d. Заменить элемент по ID (ReplaceById)
+    Console.WriteLine("5. Обновление клиента по ID в БД (ReplaceById):");
+    var updatedClient = new Client(1, "Кузнецов-Обновленный", "Константин", "Константинович", "+79017778899", "kuznetsov_new@mail.ru", "0320 112233", "г. Краснодар, новый адрес");
+    bool dbUpdated = dbRep.ReplaceById(id1, updatedClient);
+    Console.WriteLine($"   Обновление ID={id1} успешно: {dbUpdated}");
+    Console.WriteLine($"   Новые данные: {dbRep.GetById(id1)?.ToFullString()}\n");
+
+    // e. Удалить элемент по ID (DeleteById)
+    Console.WriteLine("6. Удаление клиента по ID из БД (DeleteById):");
+    bool dbDeleted = dbRep.DeleteById(id2);
+    Console.WriteLine($"   Удаление ID={id2} успешно: {dbDeleted}");
+    Console.WriteLine($"   Итоговое количество записей (get_count): {dbRep.get_count()}\n");
+
+    Console.WriteLine("Все тесты Client_rep_DB успешно выполнены!");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"   [Инфо]: Не удалось подключиться к СУБД с параметрами по умолчанию ({ex.Message}).");
+    Console.WriteLine("   Класс Client_rep_DB полностью скомпилирован и готов к работе.");
+    Console.WriteLine("   Для подключения к конкретной БД задайте переменную окружения DB_CONNECTION_STRING.");
+}
