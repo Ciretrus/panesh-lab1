@@ -19,7 +19,6 @@ public class Client : ClientBase, IEquatable<Client>, IDisposable
     private string? _email;
     private string? _address;
     public event Action OnDestroy;
-
     // --- Конструкторы ---
 
     /// <summary>
@@ -42,7 +41,11 @@ public class Client : ClientBase, IEquatable<Client>, IDisposable
         Email = email;
         Address = address;
     }
-
+     ~Client()
+    {
+        Console.WriteLine($"Объект Client с ID={Id} уничтожен сборщиком мусора.");
+        OnDestroy?.Invoke();
+    }
     /// <summary>
     /// 2. Краткий конструктор (только обязательные поля).
     /// </summary>

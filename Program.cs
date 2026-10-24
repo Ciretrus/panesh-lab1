@@ -43,6 +43,9 @@ Console.WriteLine($"  ClientBase.IsValidPassportSeriesNumber('0315 111222'): {Cl
 // 4. Проверка полнофункционального вывода полной сущности
 Console.WriteLine("\nПолная информация о клиенте (метод ToFullString()):");
 Console.WriteLine($"  {fullClient}");
+Console.WriteLine($"------------------------");
 Console.WriteLine($"  {shortFromFull}");
-fullClient.Dispose();
+allClients.Remove(fullClient);
+fullClient = null;
+GC.Collect();
 Console.WriteLine($"  {shortFromFull}");
