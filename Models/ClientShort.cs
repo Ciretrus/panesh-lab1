@@ -13,6 +13,8 @@ public class ClientShort : ClientBase, IEquatable<ClientShort>, IDisposable
     // Закрытое поле, специфичное только для краткой версии
     private string _shortName = string.Empty;
 
+    private readonly WeakReference<Client>? _parentClient;
+
     // --- Конструкторы ---
 
     public ClientShort(int id, string shortName, string phone, string passportSeriesNumber)
@@ -28,7 +30,8 @@ public class ClientShort : ClientBase, IEquatable<ClientShort>, IDisposable
             client.Phone,
             client.PassportSeriesNumber)
     {
-        client.OnDestroy += Dispose;
+        _parentClient = new WeakReference<Client>(client);
+        LinkWith(client);
     }
 
     public ClientShort(string rawData)
@@ -110,8 +113,23 @@ public class ClientShort : ClientBase, IEquatable<ClientShort>, IDisposable
         return Regex.IsMatch(shortName.Trim(), ShortNamePattern);
     }
 
-    public void Dispose()
+    public override bool IsDisposed
     {
-        GC.SuppressFinalize(this);
+        get
+        {
+            if (base.IsDisposed) return true;
+            if (_parentClient != null && !_parentClient.TryGetTarget(out _))
+            {
+                _isDisposed = true;
+                return true;
+            }
+            return false;
+        }
+    }
+
+    ~ClientShort()
+    {
+        Console.WriteLine($"[Деструктор GC] Объект ClientShort с ID={_id} уничтожен сборщиком мусора.");
+        Dispose(false);
     }
 }

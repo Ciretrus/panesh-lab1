@@ -18,7 +18,7 @@ public class Client : ClientBase, IEquatable<Client>, IDisposable
     private string? _middleName;
     private string? _email;
     private string? _address;
-    public event Action OnDestroy;
+
     // --- Конструкторы ---
 
     /// <summary>
@@ -41,10 +41,11 @@ public class Client : ClientBase, IEquatable<Client>, IDisposable
         Email = email;
         Address = address;
     }
-     ~Client()
+
+    ~Client()
     {
-        Console.WriteLine($"Объект Client с ID={Id} уничтожен сборщиком мусора.");
-        OnDestroy?.Invoke();
+        Console.WriteLine($"[Деструктор GC] Объект Client с ID={_id} уничтожен сборщиком мусора.");
+        Dispose(false);
     }
     /// <summary>
     /// 2. Краткий конструктор (только обязательные поля).
@@ -154,6 +155,9 @@ public class Client : ClientBase, IEquatable<Client>, IDisposable
     /// </summary>
     public string ToFullString()
     {
+        if (IsDisposed)
+            return $"[Client ID={_id}] (ОБЪЕКТ УНИЧТОЖЕН)";
+
         string middle = string.IsNullOrWhiteSpace(MiddleName) ? string.Empty : $" {MiddleName}";
         string mail = Email ?? "—";
         string addr = Address ?? "—";
@@ -305,9 +309,4 @@ public class Client : ClientBase, IEquatable<Client>, IDisposable
 
     public static bool IsValidAddress(string? address) =>
         ValidateLength(address, maxLength: 255, isRequired: false);
-
-    public void Dispose()
-    {
-        OnDestroy?.Invoke();
-    }
 }

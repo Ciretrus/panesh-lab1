@@ -6,16 +6,110 @@ namespace JewelryWorkshop.Models;
 /// Базовый абстрактный класс клиента ювелирной мастерской.
 /// Инкапсулирует общие поля, свойства и логику валидации для устранения дублирования кода.
 /// </summary>
-public abstract class ClientBase
+public abstract class ClientBase : IDisposable
 {
     // Общие константы валидации
     protected const string PhonePattern = @"^\+?[0-9]{10,15}$";
     protected const string PassportPattern = @"^\d{4}\s?\d{6}$";
 
     // Закрытые поля общих данных
-    private int _id;
-    private string _phone = string.Empty;
-    private string _passportSeriesNumber = string.Empty;
+    protected int _id;
+    protected string _phone = string.Empty;
+    protected string _passportSeriesNumber = string.Empty;
+
+    // Поля управления жизненным циклом и связью объектов
+    protected bool _isDisposed;
+    private readonly List<WeakReference<ClientBase>> _linkedClients = new();
+    private readonly object _linkLock = new();
+
+    /// <summary>
+    /// Флаг уничтожения объекта.
+    /// </summary>
+    public virtual bool IsDisposed => _isDisposed;
+
+    /// <summary>
+    /// Событие, вызываемое при уничтожении объекта.
+    /// </summary>
+    public event Action<ClientBase>? OnDestroy;
+
+    /// <summary>
+    /// Связать жизненный цикл данного объекта со вторым объектом ClientBase (двусторонняя связь).
+    /// При удалении одного экземпляра автоматически уничтожается и второй.
+    /// </summary>
+    public void LinkWith(ClientBase other)
+    {
+        if (other == null || ReferenceEquals(this, other)) return;
+
+        lock (_linkLock)
+        {
+            bool alreadyLinked = _linkedClients.Any(w => w.TryGetTarget(out var t) && ReferenceEquals(t, other));
+            if (!alreadyLinked)
+            {
+                _linkedClients.Add(new WeakReference<ClientBase>(other));
+            }
+        }
+
+        lock (other._linkLock)
+        {
+            bool otherAlreadyLinked = other._linkedClients.Any(w => w.TryGetTarget(out var t) && ReferenceEquals(t, this));
+            if (!otherAlreadyLinked)
+            {
+                other._linkedClients.Add(new WeakReference<ClientBase>(this));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Явное удаление объекта (синоним Dispose).
+    /// </summary>
+    public void Delete() => Dispose();
+
+    /// <summary>
+    /// Проверка, не уничтожен ли объект.
+    /// </summary>
+    public void ThrowIfDisposed()
+    {
+        if (IsDisposed)
+            throw new ObjectDisposedException(GetType().Name, $"Объект {GetType().Name} [ID={_id}] уничтожен.");
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_isDisposed) return;
+        _isDisposed = true;
+
+        OnDestroy?.Invoke(this);
+
+        // Каскадно уничтожаем все связанные экземпляры
+        List<ClientBase> toDispose = new();
+        lock (_linkLock)
+        {
+            foreach (var wr in _linkedClients)
+            {
+                if (wr.TryGetTarget(out var target) && !target.IsDisposed)
+                {
+                    toDispose.Add(target);
+                }
+            }
+            _linkedClients.Clear();
+        }
+
+        foreach (var linked in toDispose)
+        {
+            linked.Dispose();
+        }
+    }
+
+    ~ClientBase()
+    {
+        Dispose(false);
+    }
 
     /// <summary>
     /// Защищенный конструктор для использования в классах-наследниках.
@@ -75,6 +169,9 @@ public abstract class ClientBase
     /// </summary>
     public virtual string ToShortString()
     {
+        if (IsDisposed)
+            return $"[{GetType().Name} ID={_id}] (ОБЪЕКТ УНИЧТОЖЕН)";
+
         return $"[ID={Id}] {GetShortName()} | Тел: {Phone} | Паспорт: {PassportSeriesNumber}";
     }
 
