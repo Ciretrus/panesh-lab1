@@ -5,13 +5,10 @@ using YamlDotNet.Serialization.NamingConventions;
 namespace JewelryWorkshop.Repositories;
 
 /// <summary>
-/// Репозиторий для работы с сущностью Client в формате YAML (ЛР2, пункт 2).
+/// Репозиторий для работы с сущностью Client в формате YAML (наследует Client_rep_base).
 /// </summary>
-public class Client_rep_yaml
+public class Client_rep_yaml : Client_rep_base
 {
-    private readonly string _filePath;
-    private List<Client> _clients = new();
-
     private static readonly ISerializer YamlSerializer = new SerializerBuilder()
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
         .Build();
@@ -21,9 +18,6 @@ public class Client_rep_yaml
         .IgnoreUnmatchedProperties()
         .Build();
 
-    /// <summary>
-    /// Вспомогательная структура для сериализации/десериализации YAML с последующей валидацией через конструктор Client.
-    /// </summary>
     private sealed class YamlClientModel
     {
         public int Id { get; set; }
@@ -37,34 +31,31 @@ public class Client_rep_yaml
     }
 
     public Client_rep_yaml(string filePath)
+        : base(filePath)
     {
-        if (string.IsNullOrWhiteSpace(filePath))
-            throw new ArgumentException("Путь к файлу не может быть пустым.", nameof(filePath));
-
-        _filePath = filePath;
         ReadAll();
     }
 
     /// <summary>
-    /// a. Чтение всех значений из файла.
+    /// a. Чтение всех значений из YAML-файла.
     /// </summary>
-    public List<Client> ReadAll()
+    public override List<Client> ReadAll()
     {
-        if (!File.Exists(_filePath))
+        if (!File.Exists(FilePath))
         {
-            _clients = new List<Client>();
-            return _clients;
+            Clients = new List<Client>();
+            return Clients;
         }
 
-        string yaml = File.ReadAllText(_filePath);
+        string yaml = File.ReadAllText(FilePath);
         if (string.IsNullOrWhiteSpace(yaml))
         {
-            _clients = new List<Client>();
-            return _clients;
+            Clients = new List<Client>();
+            return Clients;
         }
 
         var rawItems = YamlDeserializer.Deserialize<List<YamlClientModel>>(yaml) ?? new List<YamlClientModel>();
-        _clients = rawItems
+        Clients = rawItems
             .Select(item => new Client(
                 item.Id,
                 item.LastName,
@@ -76,21 +67,17 @@ public class Client_rep_yaml
                 item.Address))
             .ToList();
 
-        return _clients;
+        return Clients;
     }
 
     /// <summary>
-    /// b. Запись всех значений в файл.
+    /// b. Запись всех значений в YAML-файл.
     /// </summary>
-    public void WriteAll()
+    public override void WriteAll()
     {
-        string? directory = Path.GetDirectoryName(_filePath);
-        if (!string.IsNullOrWhiteSpace(directory) && !Directory.Exists(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
+        EnsureDirectoryExists();
 
-        var rawItems = _clients
+        var rawItems = Clients
             .Select(c => new YamlClientModel
             {
                 Id = c.Id,
@@ -105,95 +92,6 @@ public class Client_rep_yaml
             .ToList();
 
         string yaml = YamlSerializer.Serialize(rawItems);
-        File.WriteAllText(_filePath, yaml);
-    }
-
-    /// <summary>
-    /// c. Получить объект по ID.
-    /// </summary>
-    public Client? GetById(int id)
-    {
-        return _clients.FirstOrDefault(c => c.Id == id);
-    }
-
-    /// <summary>
-    /// d. get_k_n_short_list: Получить список k по счету n объектов класса ClientShort.
-    /// </summary>
-    public List<ClientShort> Get_k_n_short_list(int k, int n)
-    {
-        if (k < 1)
-            throw new ArgumentOutOfRangeException(nameof(k), "Номер страницы (k) должен быть больше или равен 1.");
-        if (n < 1)
-            throw new ArgumentOutOfRangeException(nameof(n), "Количество элементов (n) должно быть больше или равно 1.");
-
-        return _clients
-            .Skip((k - 1) * n)
-            .Take(n)
-            .Select(c => new ClientShort(c))
-            .ToList();
-    }
-
-    /// <summary>
-    /// e. Сортировать элементы по выбранному полю предметной области (по фамилии и имени).
-    /// </summary>
-    public void SortByField()
-    {
-        _clients = _clients
-            .OrderBy(c => c.LastName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(c => c.FirstName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(c => c.MiddleName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
-
-    /// <summary>
-    /// f. Добавить объект в список (при добавлении сформировать новый ID).
-    /// </summary>
-    public Client Add(Client client)
-    {
-        if (client is null)
-            throw new ArgumentNullException(nameof(client));
-
-        int newId = _clients.Count == 0 ? 1 : _clients.Max(c => c.Id) + 1;
-        client.Id = newId;
-        _clients.Add(client);
-        return client;
-    }
-
-    /// <summary>
-    /// g. Заменить элемент списка по ID.
-    /// </summary>
-    public bool ReplaceById(int id, Client updatedClient)
-    {
-        if (updatedClient is null)
-            throw new ArgumentNullException(nameof(updatedClient));
-
-        int index = _clients.FindIndex(c => c.Id == id);
-        if (index == -1)
-            return false;
-
-        updatedClient.Id = id;
-        _clients[index] = updatedClient;
-        return true;
-    }
-
-    /// <summary>
-    /// h. Удалить элемент списка по ID.
-    /// </summary>
-    public bool DeleteById(int id)
-    {
-        Client? existing = GetById(id);
-        if (existing is null)
-            return false;
-
-        return _clients.Remove(existing);
-    }
-
-    /// <summary>
-    /// i. get_count: Получить количество элементов.
-    /// </summary>
-    public int GetCount()
-    {
-        return _clients.Count;
+        File.WriteAllText(FilePath, yaml);
     }
 }
-
