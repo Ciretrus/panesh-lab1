@@ -1,4 +1,5 @@
 using System.Data;
+using System.Globalization;
 using JewelryWorkshop.Models;
 
 namespace JewelryWorkshop.Repositories;
@@ -83,8 +84,7 @@ public class Client_rep_DB
     /// </summary>
     public Client Add(Client client)
     {
-        if (client is null)
-            throw new ArgumentNullException(nameof(client));
+        ArgumentNullException.ThrowIfNull(client);
 
         const string sql = """
             INSERT INTO clients (last_name, first_name, middle_name, phone, email, passport_series_number, address)
@@ -102,8 +102,7 @@ public class Client_rep_DB
     /// </summary>
     public bool ReplaceById(int id, Client updatedClient)
     {
-        if (updatedClient is null)
-            throw new ArgumentNullException(nameof(updatedClient));
+        ArgumentNullException.ThrowIfNull(updatedClient);
 
         const string sql = """
             UPDATE clients
@@ -197,14 +196,14 @@ public class Client_rep_DB
 
     private static Client MapClientFromRow(DataRow row)
     {
-        int id = Convert.ToInt32(row["id"]);
-        string lastName = Convert.ToString(row["last_name"])!;
-        string firstName = Convert.ToString(row["first_name"])!;
-        string? middleName = row.IsNull("middle_name") ? null : Convert.ToString(row["middle_name"]);
-        string phone = Convert.ToString(row["phone"])!;
-        string? email = row.IsNull("email") ? null : Convert.ToString(row["email"]);
-        string passport = Convert.ToString(row["passport_series_number"])!;
-        string? address = row.IsNull("address") ? null : Convert.ToString(row["address"]);
+        int id = Convert.ToInt32(row["id"], CultureInfo.InvariantCulture);
+        string lastName = Convert.ToString(row["last_name"], CultureInfo.InvariantCulture)!;
+        string firstName = Convert.ToString(row["first_name"], CultureInfo.InvariantCulture)!;
+        string? middleName = row.IsNull("middle_name") ? null : Convert.ToString(row["middle_name"], CultureInfo.InvariantCulture);
+        string phone = Convert.ToString(row["phone"], CultureInfo.InvariantCulture)!;
+        string? email = row.IsNull("email") ? null : Convert.ToString(row["email"], CultureInfo.InvariantCulture);
+        string passport = Convert.ToString(row["passport_series_number"], CultureInfo.InvariantCulture)!;
+        string? address = row.IsNull("address") ? null : Convert.ToString(row["address"], CultureInfo.InvariantCulture);
 
         return new Client(id, lastName, firstName, middleName, phone, email, passport, address);
     }

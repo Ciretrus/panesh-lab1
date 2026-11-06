@@ -1,4 +1,5 @@
 using System.Data;
+using System.Globalization;
 using Npgsql;
 
 namespace JewelryWorkshop.Repositories;
@@ -69,7 +70,7 @@ public sealed class DatabaseConnection
 
         using var cmd = CreateCommand(sql, conn, parameters);
         object? result = cmd.ExecuteScalar();
-        return (T)Convert.ChangeType(result!, typeof(T));
+        return (T)Convert.ChangeType(result!, typeof(T), CultureInfo.InvariantCulture);
     }
 
     /// <summary>

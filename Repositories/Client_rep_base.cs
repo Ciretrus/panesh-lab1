@@ -8,8 +8,8 @@ namespace JewelryWorkshop.Repositories;
 /// </summary>
 public abstract class Client_rep_base
 {
-    protected readonly string FilePath = string.Empty;
-    protected List<Client> Clients = new();
+    protected string FilePath { get; } = string.Empty;
+    protected List<Client> Clients { get; set; } = new();
 
     protected Client_rep_base()
     {
@@ -75,8 +75,7 @@ public abstract class Client_rep_base
     /// </summary>
     public virtual Client Add(Client client)
     {
-        if (client is null)
-            throw new ArgumentNullException(nameof(client));
+        ArgumentNullException.ThrowIfNull(client);
 
         int newId = Clients.Count == 0 ? 1 : Clients.Max(c => c.Id) + 1;
         client.Id = newId;
@@ -89,8 +88,7 @@ public abstract class Client_rep_base
     /// </summary>
     public virtual bool ReplaceById(int id, Client updatedClient)
     {
-        if (updatedClient is null)
-            throw new ArgumentNullException(nameof(updatedClient));
+        ArgumentNullException.ThrowIfNull(updatedClient);
 
         int index = Clients.FindIndex(c => c.Id == id);
         if (index == -1)
@@ -130,4 +128,3 @@ public abstract class Client_rep_base
         }
     }
 }
-

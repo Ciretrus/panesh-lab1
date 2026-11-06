@@ -19,7 +19,7 @@ public class Client : ClientBase, IEquatable<Client>, IDisposable
     private string? _middleName;
     private string? _email;
     private string? _address;
-    public event Action OnDestroy;
+    public event Action? OnDestroy;
 
     // --- Конструкторы ---
 
@@ -211,7 +211,7 @@ public class Client : ClientBase, IEquatable<Client>, IDisposable
 
         string trimmed = rawData.Trim();
 
-        if (trimmed.StartsWith("{") && trimmed.EndsWith("}"))
+        if (trimmed.StartsWith('{') && trimmed.EndsWith('}'))
         {
             using var doc = JsonDocument.Parse(trimmed);
             return ParseJsonElement(doc.RootElement);
@@ -308,5 +308,6 @@ public class Client : ClientBase, IEquatable<Client>, IDisposable
     public void Dispose()
     {
         OnDestroy?.Invoke();
+        GC.SuppressFinalize(this);
     }
 }

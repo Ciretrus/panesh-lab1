@@ -112,6 +112,6 @@ public class ClientShort : ClientBase, IEquatable<ClientShort>, IDisposable
 
     public void Dispose()
     {
-
+        GC.SuppressFinalize(this);
     }
 }
