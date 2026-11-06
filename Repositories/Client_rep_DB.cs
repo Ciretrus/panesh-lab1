@@ -1,71 +1,26 @@
+using System.Data;
 using JewelryWorkshop.Models;
-using Npgsql;
 
 namespace JewelryWorkshop.Repositories;
 
 /// <summary>
-/// Репозиторий для работы с сущностью Client в БД PostgreSQL с использованием чистых SQL-запросов (ЛР2, пункт 4).
+/// Репозиторий для работы с сущностью Client в БД PostgreSQL (ЛР2, пункт 5).
+/// Использует делегацию обращения к БД через одиночку DatabaseConnection.
 /// </summary>
 public class Client_rep_DB
 {
-    private readonly string _connectionString;
+    private readonly DatabaseConnection _db;
 
-    public Client_rep_DB(string connectionString)
+    public Client_rep_DB(string? connectionString = null)
     {
-        if (string.IsNullOrWhiteSpace(connectionString))
-            throw new ArgumentException("Строка подключения не может быть пустой.", nameof(connectionString));
-
-        _connectionString = connectionString;
-        EnsureDatabaseAndTableExist();
+        _db = string.IsNullOrWhiteSpace(connectionString)
+            ? DatabaseConnection.GetInstance()
+            : DatabaseConnection.GetInstance(connectionString);
     }
 
-    /// <summary>
-    /// Автоматическое создание БД (если не существует) и таблицы clients.
-    /// </summary>
-    private void EnsureDatabaseAndTableExist()
+    public Client_rep_DB(DatabaseConnection db)
     {
-        var builder = new NpgsqlConnectionStringBuilder(_connectionString);
-        string? targetDatabase = builder.Database;
-
-        if (!string.IsNullOrWhiteSpace(targetDatabase) &&
-            !string.Equals(targetDatabase, "postgres", StringComparison.OrdinalIgnoreCase))
-        {
-            var adminBuilder = new NpgsqlConnectionStringBuilder(_connectionString)
-            {
-                Database = "postgres"
-            };
-
-            using var adminConn = new NpgsqlConnection(adminBuilder.ConnectionString);
-            adminConn.Open();
-
-            using var checkCmd = new NpgsqlCommand("SELECT 1 FROM pg_database WHERE datname = @dbName;", adminConn);
-            checkCmd.Parameters.AddWithValue("@dbName", targetDatabase);
-            object? exists = checkCmd.ExecuteScalar();
-
-            if (exists is null)
-            {
-                using var createDbCmd = new NpgsqlCommand($"CREATE DATABASE \"{targetDatabase}\";", adminConn);
-                createDbCmd.ExecuteNonQuery();
-            }
-        }
-
-        const string createTableSql = """
-            CREATE TABLE IF NOT EXISTS clients (
-                id SERIAL PRIMARY KEY,
-                last_name VARCHAR(60) NOT NULL,
-                first_name VARCHAR(60) NOT NULL,
-                middle_name VARCHAR(60),
-                phone VARCHAR(20) NOT NULL UNIQUE,
-                email VARCHAR(100),
-                passport_series_number VARCHAR(20) NOT NULL UNIQUE,
-                address VARCHAR(255)
-            );
-            """;
-
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
-        using var cmd = new NpgsqlCommand(createTableSql, conn);
-        cmd.ExecuteNonQuery();
+        _db = db ?? throw new ArgumentNullException(nameof(db));
     }
 
     /// <summary>
@@ -79,17 +34,13 @@ public class Client_rep_DB
             WHERE id = @id;
             """;
 
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
+        var parameters = new Dictionary<string, object?> { ["@id"] = id };
+        DataTable table = _db.ExecuteQuery(sql, parameters);
 
-        using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@id", id);
-
-        using var reader = cmd.ExecuteReader();
-        if (!reader.Read())
+        if (table.Rows.Count == 0)
             return null;
 
-        return MapClientFromReader(reader);
+        return MapClientFromRow(table.Rows[0]);
     }
 
     /// <summary>
@@ -109,20 +60,18 @@ public class Client_rep_DB
             LIMIT @limit OFFSET @offset;
             """;
 
-        int offset = (k - 1) * n;
-        var result = new List<ClientShort>();
-
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
-
-        using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@limit", n);
-        cmd.Parameters.AddWithValue("@offset", offset);
-
-        using var reader = cmd.ExecuteReader();
-        while (reader.Read())
+        var parameters = new Dictionary<string, object?>
         {
-            Client fullClient = MapClientFromReader(reader);
+            ["@limit"] = n,
+            ["@offset"] = (k - 1) * n
+        };
+
+        DataTable table = _db.ExecuteQuery(sql, parameters);
+        var result = new List<ClientShort>(table.Rows.Count);
+
+        foreach (DataRow row in table.Rows)
+        {
+            Client fullClient = MapClientFromRow(row);
             result.Add(new ClientShort(fullClient));
         }
 
@@ -143,14 +92,7 @@ public class Client_rep_DB
             RETURNING id;
             """;
 
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
-
-        using var cmd = new NpgsqlCommand(sql, conn);
-        AddClientParameters(cmd, client);
-
-        object? scalar = cmd.ExecuteScalar();
-        int newId = Convert.ToInt32(scalar);
+        int newId = _db.ExecuteScalar<int>(sql, CreateClientParameters(client));
         client.Id = newId;
         return client;
     }
@@ -175,14 +117,10 @@ public class Client_rep_DB
             WHERE id = @id;
             """;
 
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
+        var parameters = CreateClientParameters(updatedClient);
+        parameters["@id"] = id;
 
-        using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@id", id);
-        AddClientParameters(cmd, updatedClient);
-
-        int affected = cmd.ExecuteNonQuery();
+        int affected = _db.ExecuteNonQuery(sql, parameters);
         if (affected > 0)
         {
             updatedClient.Id = id;
@@ -198,14 +136,9 @@ public class Client_rep_DB
     public bool DeleteById(int id)
     {
         const string sql = "DELETE FROM clients WHERE id = @id;";
+        var parameters = new Dictionary<string, object?> { ["@id"] = id };
 
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
-
-        using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@id", id);
-
-        int affected = cmd.ExecuteNonQuery();
+        int affected = _db.ExecuteNonQuery(sql, parameters);
         return affected > 0;
     }
 
@@ -215,13 +148,28 @@ public class Client_rep_DB
     public int GetCount()
     {
         const string sql = "SELECT COUNT(*) FROM clients;";
+        return _db.ExecuteScalar<int>(sql);
+    }
 
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
+    /// <summary>
+    /// Получение всех клиентов из БД.
+    /// </summary>
+    public List<Client> GetAll()
+    {
+        const string sql = """
+            SELECT id, last_name, first_name, middle_name, phone, email, passport_series_number, address
+            FROM clients
+            ORDER BY id;
+            """;
 
-        using var cmd = new NpgsqlCommand(sql, conn);
-        object? scalar = cmd.ExecuteScalar();
-        return Convert.ToInt32(scalar);
+        DataTable table = _db.ExecuteQuery(sql);
+        var result = new List<Client>(table.Rows.Count);
+        foreach (DataRow row in table.Rows)
+        {
+            result.Add(MapClientFromRow(row));
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -230,37 +178,34 @@ public class Client_rep_DB
     public void ClearAll()
     {
         const string sql = "TRUNCATE TABLE clients RESTART IDENTITY CASCADE;";
-
-        using var conn = new NpgsqlConnection(_connectionString);
-        conn.Open();
-
-        using var cmd = new NpgsqlCommand(sql, conn);
-        cmd.ExecuteNonQuery();
+        _db.ExecuteNonQuery(sql);
     }
 
-    private static void AddClientParameters(NpgsqlCommand cmd, Client client)
+    private static Dictionary<string, object?> CreateClientParameters(Client client)
     {
-        cmd.Parameters.AddWithValue("@lastName", client.LastName);
-        cmd.Parameters.AddWithValue("@firstName", client.FirstName);
-        cmd.Parameters.AddWithValue("@middleName", (object?)client.MiddleName ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@phone", client.Phone);
-        cmd.Parameters.AddWithValue("@email", (object?)client.Email ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@passport", client.PassportSeriesNumber);
-        cmd.Parameters.AddWithValue("@address", (object?)client.Address ?? DBNull.Value);
+        return new Dictionary<string, object?>
+        {
+            ["@lastName"] = client.LastName,
+            ["@firstName"] = client.FirstName,
+            ["@middleName"] = client.MiddleName,
+            ["@phone"] = client.Phone,
+            ["@email"] = client.Email,
+            ["@passport"] = client.PassportSeriesNumber,
+            ["@address"] = client.Address
+        };
     }
 
-    private static Client MapClientFromReader(NpgsqlDataReader reader)
+    private static Client MapClientFromRow(DataRow row)
     {
-        int id = reader.GetInt32(0);
-        string lastName = reader.GetString(1);
-        string firstName = reader.GetString(2);
-        string? middleName = reader.IsDBNull(3) ? null : reader.GetString(3);
-        string phone = reader.GetString(4);
-        string? email = reader.IsDBNull(5) ? null : reader.GetString(5);
-        string passport = reader.GetString(6);
-        string? address = reader.IsDBNull(7) ? null : reader.GetString(7);
+        int id = Convert.ToInt32(row["id"]);
+        string lastName = Convert.ToString(row["last_name"])!;
+        string firstName = Convert.ToString(row["first_name"])!;
+        string? middleName = row.IsNull("middle_name") ? null : Convert.ToString(row["middle_name"]);
+        string phone = Convert.ToString(row["phone"])!;
+        string? email = row.IsNull("email") ? null : Convert.ToString(row["email"]);
+        string passport = Convert.ToString(row["passport_series_number"])!;
+        string? address = row.IsNull("address") ? null : Convert.ToString(row["address"]);
 
         return new Client(id, lastName, firstName, middleName, phone, email, passport, address);
     }
 }
-
