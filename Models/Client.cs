@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace JewelryWorkshop.Models;
@@ -25,6 +26,7 @@ public class Client : ClientBase, IEquatable<Client>, IDisposable
     /// <summary>
     /// 1. Основной канонический конструктор.
     /// </summary>
+    [JsonConstructor]
     public Client(
         int id,
         string lastName,
